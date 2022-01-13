@@ -38,30 +38,30 @@ class merge_func:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reset=True'
 
-	def __init__(self,_path,_sta,_fin,reset=False,):
+	def __init__(self,path_data,start_time,end_time,reset=False,):
 
 		print(f'\n{self.nam}')
 		print('='*65)
 		print(f"Merge smps and aps, from mobility diameter to aerodynamic diameter")
 
 		## class parameter
-		self.index 	  = lambda _freq: date_range(_sta,_fin,freq=_freq)
-		self.__time   = (_sta,_fin)
+		self.index 	  = lambda _freq: date_range(start_time,end_time,freq=_freq)
+		self.__time   = (start_time,end_time)
 
-		self.path  = _path
+		self.path  = path_data
 		self.reset = reset
 
-		self.pkl_nam = f"smps2aps_{_sta.strftime('%Y%m%d')}-{_fin.strftime('%Y%m%d')}.pkl"
+		self.pkl_nam = f"smps2aps_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.pkl"
 		
-		print(f" from {_sta.strftime('%Y-%m-%d %X')} to {_fin.strftime('%Y-%m-%d %X')}")
+		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
 		print('='*65)
 		print(f"{dtm.now().strftime('%m/%d %X')}")
 
 
 
 
-	def __pre_process():
-		
+	def __pre_process(self,):
+		pass
 		## discard missing data 
 
 
@@ -74,8 +74,8 @@ class merge_func:
 
 
 
-	def __overlap_fitting():
-		
+	def __overlap_fitting(self,):
+		pass
 		## overlap fitting
 		## lowest APS bins in overlap region (starting after bin 2)
 		## return shift infomation
@@ -94,20 +94,25 @@ class merge_func:
 
 
 
+	def __shift_data_process(self,):
+		pass
+		## return data deal with shift infomation
+
+
+
+
+	
+	def __merge_data(self,):
+		pass
+		## return 
 
 
 
 
 
 
-
-
-
-
-
-
-	def merge_data(ave_time='1h',smps_fit_lowbound=340.,smps_overlap_lowbound=523.):
-		
+	def merge_data(self,ave_time='1h',smps_fit_lowbound=340.,smps_overlap_lowbound=523.):
+		pass
 
 
 
@@ -116,3 +121,36 @@ class merge_func:
 		self.__pre_process()
 
 		## shift infomation, calculate by powerlaw fitting
+		shift = self.__overlap_fitting()
+		
+
+		## process data by shift infomation
+		smps, aps = self.__shift_data_process(shift)
+
+
+		self.fout = fout
+
+		return fout
+
+
+
+	def save_data(self,path_save=None):
+		pass
+		path_save = path_save if path_save is not None else self.path
+
+
+
+
+	def get_data(self,**kwarg):
+		pass
+		
+		default_par = {start_time : self.start_time,
+					   end_time   : self.end_time,
+					   path_data  : self.path,
+					   ave_time   : '1h',
+					}
+		default_par.update(kwarg)
+		
+
+
+
