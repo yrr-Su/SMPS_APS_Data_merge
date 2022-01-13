@@ -58,12 +58,16 @@ class merge_func:
 		print(f"{dtm.now().strftime('%m/%d %X')}")
 
 
-
+	def __read_data(self,):
+		pass
+		## read data
+		
+		
 
 	def __pre_process(self,):
 		pass
 		## discard missing data 
-
+		
 
 		## quality control
 		## SMPS overlap region remove the no value profile
@@ -115,6 +119,7 @@ class merge_func:
 		pass
 
 
+		smps = 
 
 		## pre-process data
 
