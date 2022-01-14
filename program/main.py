@@ -35,7 +35,7 @@ def run(path_data,start,end,**kwarg):
 	raw_process = reader(default_par['path_rawdata'],path_data,start,end)
 	raw_process.save_data()
 
-	
+	t_st, t_ed = dtm(2021,11,8,18), dtm(2021,11,8,19,54)
 
 
 

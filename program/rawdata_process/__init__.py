@@ -84,7 +84,7 @@ class reader:
 		with open(_file,'r',encoding='utf-8',errors='ignore') as f:
 
 			_df = read_table(f,skiprows=6,parse_dates={'Time':['Date','Start Time']}).set_index('Time')
-			_key = list(_df.keys()[2:54])
+			_key = list(_df.keys()[3:54]) ## 542 ~ 1981
 
 			_newkey = {}
 			for _k in _key: _newkey[_k] = (float(_k.strip('<>'))*1e3).__round__(4) ## to nm
@@ -133,7 +133,7 @@ class reader:
 		_df_prcs = self.__raw_process(_df_con,dt_freq)
 		print()
 
-		return {'data':_df_prcs[_df_prcs.keys()[:-1]],'total':_df_prcs['total'].to_frame()}
+		return _df_prcs
 
 	## get process data
 	def save_data(self):

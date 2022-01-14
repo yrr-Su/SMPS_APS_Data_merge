@@ -45,7 +45,7 @@ class merge_func:
 		print(f"Merge smps and aps, from mobility diameter to aerodynamic diameter")
 
 		## class parameter
-		self.index 	  = lambda _freq: date_range(start_time,end_time,freq=_freq)
+		self.index 	  = date_range(start_time,end_time,freq='6T')
 		self.__time   = (start_time,end_time)
 
 		self.path  = Path(path_data)
@@ -57,25 +57,23 @@ class merge_func:
 		print('='*65)
 		print(f"{dtm.now().strftime('%m/%d %X')}")
 
-
+	## Read raw data(has been processed by rawdata_process)
+	## return : aps, 
+	## 			total conc. of aps, 
+	## 			smps, 
+	## 			total conc. smps
 	def __read_data(self,):
 		## read raw data
 		with open(self.path/'smps_aps_raw.pkl','rb') as f:
 			_dt = pkl.load(f)
-		_aps, _smps = _dt['aps'], _dt['smps']
+		_aps, _smps = _dt['aps'].reindex(self.index), _dt['smps'].reindex(self.index),
 
-		return _aps['data'], _aps['total'], _smps['data'], _smps['total']
+		return _aps[_aps.keys()[:-1]], _aps['total'].to_frame(), _smps[_smps.keys()[:-1]], _smps['total'].to_frame()
 
-	def __test_read_data(self,):
-		## read raw data
-		with open(self.path/'smps_aps_raw.pkl','rb') as f:
-			_dt = pkl.load(f)
-		_aps, _smps = _dt['aps'].loc[dtm(2021,11,8,18):dtm(2021,11,8,18,54)], _dt['smps'].loc[dtm(2021,11,8,18):dtm(2021,11,8,18,54)]
-
-		return _aps['data'], _aps['total'], _smps['data'], _smps['total']
-
-	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):
-		## quality control
+	## Quality control
+	## return : aps after QC,
+	## 			smps after QC,
+	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):s
 
 		## discard missing data(data equal to 0)
 		## bins larger than aps smallest bin
@@ -102,25 +100,35 @@ class merge_func:
 
 			_data.loc[_total_condi] = n.nan
 
-			return _data
+			return _data.resample('1h').mean()
 
 		return  _quality_ctrl(_aps,_aps_t), _quality_ctrl(_smps,_smps_t)
 
-
-	def __overlap_fitting(self,):
-		pass
+	## Overlap fitting
+	## Create a fitting func. by smps data
+	## return : shift factor
+	def __overlap_fitting(self,_aps,_smps):
 		## overlap fitting
-		## lowest APS bins in overlap region (starting after bin 2)
-		## return shift infomation
-
-
-
-
+		
 		## power law fit to SMPS num conc at upper bins to log curve
 		## y = Ax^B, A = e**coefa, B=coefb, x = logx, y = logy
 		## ref : http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
+		def _coe(_dt):
 
+			## quality control
+			_quality = _smps.loc[(_dt!=0)&n.isfinite(_dt)].copy()
+			_size = _smps_quality.size
+		
+			if _size==0: return n.nan
 
+			## power law fitting
+			_logx, _logy = n.log(_smps_quality.keys()._data), n.log(_smps_quality)
+			_x, _y, _xy, _xx = _logx.sum(), _logy.sum(), (_logx*_logy).sum(), (_logx**2).sum()
+
+			_coeB = (_size*_xy-_x*_y) / (_size*_xx-_x**2.)
+			_coeA = n.exp((_y-_coeB*_x)/_size)
+
+			return _coeA, _coeB
 
 		## coefficient function
 
@@ -130,6 +138,7 @@ class merge_func:
 	def __shift_data_process(self,):
 		pass
 		## return data deal with shift infomation
+
 
 
 
@@ -147,8 +156,7 @@ class merge_func:
 	def merge_data(self,ave_time='1h',aps_fit_highbound=1382.,smps_overlap_lowbound=523.):
 
 		## read raw data
-		# aps, aps_total, smps, smps_total = self.__read_data()
-		aps, aps_total, smps, smps_total = self.__test_read_data()
+		aps, aps_total, smps, smps_total = self.__read_data()
 
 		## pre-process data
 		aps, smps = self.__pre_process(aps,aps_total,smps,smps_total,aps_fit_highbound,smps_overlap_lowbound)
