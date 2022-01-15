@@ -44,12 +44,13 @@ class merger:
 		print(f"Merge smps and aps, from mobility diameter to aerodynamic diameter")
 
 		## class parameter
-		self.index 	  = date_range(start_time,end_time,freq='6T')
-		self.__time   = (start_time,end_time)
+		self.raw_index = date_range(start_time,end_time,freq='6T')
+		self.out_index = lambda _: date_range(start_time,end_time,freq=_)
 
 		self.path  = Path(path_data)
 		self.reset = reset
 
+		self.csv_nam = lambda _ : f"smps2aps_{_}_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.csv"
 		self.pkl_nam = f"smps2aps_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.pkl"
 		
 		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
@@ -65,7 +66,7 @@ class merger:
 		## read raw data
 		with open(self.path/'smps_aps_raw.pkl','rb') as f:
 			_dt = pkl.load(f)
-		_aps, _smps = _dt['aps'].reindex(self.index), _dt['smps'].reindex(self.index),
+		_aps, _smps = _dt['aps'].reindex(self.raw_index), _dt['smps'].reindex(self.raw_index)
 
 		return _aps[_aps.keys()[:-1]], _aps['total'].to_frame(), _smps[_smps.keys()[:-1]], _smps['total'].to_frame()
 
@@ -164,7 +165,7 @@ class merger:
 
 
 	## Create merge data
-	## Return : merge data, (density, not yet, fk out)
+	## Return : merge bins, merge data, (density, not yet, fk out)
 	def __merge_data(self,_aps,_smps,_shift,_smps_lb,_ave):
 
 		## get merge data
@@ -189,13 +190,19 @@ class merger:
 			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
 			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
-		_bins_df = DataFrame(_bins_lst).set_index(_aps.index)
-		_data_df = DataFrame(_data_lst).set_index(_aps.index)
-
+		## process output df
+		## average, align with index
+		_out_df = lambda _lst: DataFrame(_lst).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
+		
+		## not yet
+		_rho_list  = n.full(_aps.shape,n.nan)
+		
+		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list)
 
 
 	## aps_fit_highbound : the diameter I choose randomly
 	def merge_data(self,ave_time='1h',aps_fit_highbound=1382.,smps_overlap_lowbound=523.):
+		self.fout = None
 
 		## read raw data
 		aps, aps_total, smps, smps_total = self.__read_data()
@@ -210,21 +217,31 @@ class merger:
 		aps, smps, shift = self.__shift_data_process(aps,smps,shift)
 
 		## merge aps and smps
-		self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
+		bins, data, density = self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
 		
-		self.fout = fout
+		self.fout = {'bins'    : bins,
+					 'data'    : data,
+					 'density' : density,
+					}
 
-		return fout
-
-
-
+	## save data to given path
 	def save_data(self,path_save=None):
-		pass
-		path_save = path_save if path_save is not None else self.path
+		path_save = Path(path_save) if path_save is not None else self.path
+		
+		if self.fout is not None:
+			## save to pickle
+			with open(path_save/self.pkl_nam,'wb') as f:
+				pkl.dump(self.fout,f,protocol=pkl.HIGHEST_PROTOCOL)
+			
+			## save to csv
+			for nam, df in self.fout.items():
+				df.to_csv(path_save/self.csv_nam(nam))
+		else:
+			print('Please Use Function(merge_data) First !!!')
 
 
 
-
+	## maybe not necessary
 	def get_data(self,**kwarg):
 		pass
 		

@@ -36,6 +36,7 @@ def run(path_data,start,end,**kwarg):
 
 	merge_process = merger(path_data,start,end)
 	merge_process.merge_data()
+	merge_process.save_data()
 
 
 
