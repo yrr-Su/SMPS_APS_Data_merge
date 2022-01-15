@@ -130,20 +130,21 @@ class merger:
 		_x, _y, _xy, _xx = _logx.sum(), _logy.sum(axis=1), (_logx*_logy).sum(axis=1), (_logx**2).sum()
 
 		_coeB = ((_size*_xy-_x*_y)/(_size*_xx-_x**2.))
-		_coeA = n.exp((_y-_coeB*_x)/_size).values.reshape(_dt_size,-1)
-		_coeB = _coeB.values.reshape(_dt_size,-1)
+		_coeA = n.exp((_y-_coeB*_x)/_size).values.reshape(-1,1)
+		_coeB = _coeB.values.reshape(-1,1)
 
 		## rebuild shift smps data by coe. A, B
 		## x_shift = (y_ori/A)**(1/B)
 		## y_shift = A*x_shift**B
 		## y_shift_min = sum((y_shift-ybase)**2).argmin() (calculate by each column)
 		_smps_shift_x = (_smps/_coeA)**(1/_coeB)
+		_smps_shift_x = _smps_shift_x.where(~n.isinf(_smps_shift_x))
 		_smps_shift_y = (_smps_shift_x*_coeA)**_coeB
 
 		_temp = DataFrame()
 		_smps_base = n.log(_smps)
 		for _idx, (_key, _df) in enumerate(_smps_shift_y.iteritems()):
-			_df = _df.values.reshape(_dt_size,-1)
+			_df = _df.values.reshape(-1,1)
 			_temp[_idx] = ((_df-_smps_base)**2).sum(axis=1)
 		_smps_shift_ymin = _temp.idxmin(axis=1)
 
@@ -151,48 +152,45 @@ class merger:
 		## x_shift_factor = x_ori/x_shift
 		_smps_shift_factor = (_smps_shift_x.keys()._data.astype(float)/_smps_shift_x).values
 
-		return _smps_shift_factor[range(_dt_size),_smps_shift_ymin.values].copy()
+		return _smps_shift_factor[range(_dt_size),_smps_shift_ymin.values].copy().reshape(-1,1)
 
 	
 	## Remove big shift data
-	## Average datga in average time
-	## Return : aps, smps (mean)
-	def __shift_data_process(self,_aps,_smps,_shift,_ave):
+	## Return : aps, smps, shift (without big shift data)
+	def __shift_data_process(self,_aps,_smps,_shift):
 
-		_big_shift = (_shift>10.)|(_shift<-2.)
-		_smps.loc[_big_shift] = n.nan
-		_aps.loc[_big_shift]  = n.nan
-
-
-		return _aps.resample('1h').mean(), _smps.resample('1h').mean()
+		_big_shift = (_shift>10.)|(_shift<-2.)|(n.isnan(_shift))
+		return _aps.loc[~_big_shift], _smps.loc[~_big_shift], _shift[~_big_shift].reshape(-1,1)
 
 
 	## Create merge data
 	## Return : merge data, (density, not yet, fk out)
-	def __merge_data(self,):
+	def __merge_data(self,_aps,_smps,_shift,_smps_lb,_ave):
 
+		## get merge data
+		_aps_bin  = n.full(_aps.shape,_aps.keys()._data.astype(float))
 
+		_smps_bin = _smps.keys()[_smps.keys()<=_smps_lb]._data
+		_smps = _smps[_smps_bin]
 
-		_smps_bins = n.full(smps.shape,smps.keys()._data)
+		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift
 
-		_aps_bins = aps.keys()[aps.keys()>aps[_aps_fit_region].keys()[-1]]._data
-		_aps_bins_shift = n.full((aps.index.size,_aps_bins.size),_aps_bins)/shift_x.reshape(-1,1)
+		## merge
+		## due to the un-equal length data
+		## loop in each time
+		_max_bin_num = (_aps_bin>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
+		
+		_bins_lst, _data_lst = [], []
+		for _bin_aps, _bin_smps, _dt_aps, _dt_smps in zip(_aps_bin, _smps_bin_shift,_aps.values,_smps.values):
 
-		merge_conc = []	
-		def merge_bin_conc(_smps_bin,_aps_bin,_smps,_aps):
+			_condi   = _bin_aps>=_bin_smps[-1]
+			_append_ary = n.full(_max_bin_num-_condi.sum(),n.nan)
 
-			if n.isnan(_smps).all():
-				merge_conc.append(n.nan)
-				return n.nan
+			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
+			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
-			_condi = _smps_bin<=_aps_bin[0]
-
-			merge_conc.append(n.nan if (~_condi.any()) else n.hstack((_smps[n.where(_condi)[0]],_aps)))
-			return n.nan if (~_condi.any()) else n.hstack((_smps_bin[_condi],_aps_bin))
-
-		merge_bin = list(map(merge_bin_conc,_smps_bins,_aps_bins_shift,smps.values,aps[_aps_bins].values))
-
-
+		_bins_df = DataFrame(_bins_lst).set_index(_aps.index)
+		_data_df = DataFrame(_data_lst).set_index(_aps.index)
 
 
 
@@ -209,9 +207,11 @@ class merger:
 		shift = self.__overlap_fitting(aps,smps,aps_fit_highbound,smps_overlap_lowbound)
 
 		## process data by shift infomation, and average data
-		aps, smps = self.__shift_data_process(aps,smps,shift,ave_time)
+		aps, smps, shift = self.__shift_data_process(aps,smps,shift)
 
 		## merge aps and smps
+		self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
+		
 		self.fout = fout
 
 		return fout
