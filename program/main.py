@@ -1,5 +1,5 @@
 from rawdata_process import reader
-# from data_merge.smps2aps import merge_func
+from data_merge.smps2aps import merger
 from datetime import datetime as dtm
 from datetime import timedelta as dtmdt
 from pathlib import PurePath as Path
@@ -8,7 +8,6 @@ from pathlib import PurePath as Path
 
 
 ## time decorater
-from datetime import datetime as dtm
 def __timer(func):
 	def __wrap(*arg,**kwarg):
 		print(f'\nPROGRAM : {__file__}\n')
@@ -32,13 +31,11 @@ def run(path_data,start,end,**kwarg):
 	default_par = { 'path_rawdata' : path_data/'raw_data',
 					}
 
-	raw_process = reader(default_par['path_rawdata'],path_data,start,end)
+	raw_process = reader(default_par['path_rawdata'],path_data,start,end,reset=0)
 	raw_process.save_data()
 
-	t_st, t_ed = dtm(2021,11,8,18), dtm(2021,11,8,19,54)
-
-
-
+	merge_process = merger(path_data,start,end)
+	mergmerge_processer.merge_data()
 
 
 
