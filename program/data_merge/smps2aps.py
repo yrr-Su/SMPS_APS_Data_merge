@@ -63,6 +63,8 @@ class merger:
 	## 			smps, 
 	## 			total conc. smps
 	def __read_data(self,):
+		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mreading raw data\033[0m")
+
 		## read raw data
 		with open(self.path/'smps_aps_raw.pkl','rb') as f:
 			_dt = pkl.load(f)
@@ -74,6 +76,7 @@ class merger:
 	## return : aps after QC,
 	## 			smps after QC,
 	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):
+		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mpre-process data\033[0m")
 
 		## discard missing data(data equal to 0)
 		## bins larger than aps smallest bin
@@ -107,6 +110,7 @@ class merger:
 	## Create a fitting func. by smps data
 	## return : shift factor
 	def __overlap_fitting(self,_aps,_smps,_aps_hb,_smps_lb):
+		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96moverlap range fitting\033[0m")
 
 		## overlap fitting
 		## parmeter
@@ -159,6 +163,7 @@ class merger:
 	## Remove big shift data
 	## Return : aps, smps, shift (without big shift data)
 	def __shift_data_process(self,_aps,_smps,_shift):
+		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mshift-data quality control\033[0m")
 
 		_big_shift = (_shift>10.)|(_shift<-2.)|(n.isnan(_shift))
 		return _aps.loc[~_big_shift], _smps.loc[~_big_shift], _shift[~_big_shift].reshape(-1,1)
@@ -167,6 +172,7 @@ class merger:
 	## Create merge data
 	## Return : merge bins, merge data, (density, not yet, fk out)
 	def __merge_data(self,_aps,_smps,_shift,_smps_lb,_ave):
+		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mcreate merge data\033[0m")
 
 		## get merge data
 		_aps_bin  = n.full(_aps.shape,_aps.keys()._data.astype(float))
@@ -202,7 +208,12 @@ class merger:
 
 
 	## aps_fit_highbound : the diameter I choose randomly
-	def merge_data(self,ave_time='1h',aps_fit_highbound=1382.,smps_overlap_lowbound=523.):
+	def merge_data(self,ave_time='1h',aps_fit_highbound=1382,smps_overlap_lowbound=523):
+		print(f'\nMerge data :')
+		print(f' APS fittint higher diameter : {aps_fit_highbound:4d} nm')
+		print(f' SMPS overlap lower diameter : {smps_overlap_lowbound:4d} nm')
+		print(f' Average time                : {ave_time:>4s}\n')
+
 		self.fout = None
 
 		## read raw data
@@ -229,6 +240,9 @@ class merger:
 	def save_data(self,path_save=None):
 		path_save = Path(path_save) if path_save is not None else self.path
 		
+		print(f'\nSave data :')
+		print(f' Save path : {realpath(path_save)}')
+
 		if self.fout is not None:
 			## save to pickle
 			with open(path_save/self.pkl_nam,'wb') as f:
