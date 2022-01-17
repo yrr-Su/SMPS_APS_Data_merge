@@ -30,6 +30,7 @@ def run(path_data,start,end,**kwarg):
 
 	default_par = { 'path_rawdata' : path_data/'raw_data',
 					}
+	default_par.update(kwarg)
 
 	raw_process = reader(default_par['path_rawdata'],path_data,start,end,reset=0)
 	raw_process.save_data()
