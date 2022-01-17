@@ -174,7 +174,7 @@ class merger:
 		_smps_bin = _smps.keys()[_smps.keys()<=_smps_lb]._data
 		_smps = _smps[_smps_bin]
 
-		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift
+		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
 
 		## merge
 		## due to the un-equal length data
@@ -182,7 +182,8 @@ class merger:
 		_max_bin_num = (_aps_bin>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
 		
 		_bins_lst, _data_lst = [], []
-		for _bin_aps, _bin_smps, _dt_aps, _dt_smps in zip(_aps_bin, _smps_bin_shift,_aps.values,_smps.values):
+		_bin_aps = _aps_bin[0]
+		for _bin_smps, _dt_aps, _dt_smps in zip(_smps_bin_shift,_aps.values,_smps.values):
 
 			_condi   = _bin_aps>=_bin_smps[-1]
 			_append_ary = n.full(_max_bin_num-_condi.sum(),n.nan)
