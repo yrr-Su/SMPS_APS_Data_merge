@@ -154,8 +154,10 @@ class merger:
 		_smps_shift_ymin = _temp.idxmin(axis=1)
 
 		## find the shift factor which contribute miniumum y shift
-		## x_shift_factor = x_ori/x_shift
-		_smps_shift_factor = (_smps_shift_x.keys()._data.astype(float)/_smps_shift_x).values
+		## x_shift_factor = x_aps/x_smps
+		## 
+		_smps_shift_factor = (_smps_shift_x/_smps_shift_x.keys()._data.astype(float)).values
+		breakpoint()
 
 		return _smps_shift_factor[range(_dt_size),_smps_shift_ymin.values].copy().reshape(-1,1)
 
