@@ -156,11 +156,7 @@ class merger:
 
 		## find the shift factor which contribute miniumum y shift
 		## x_shift_factor = x_aps/x_smps
-		## 
 		_smps_shift_factor = (_smps_shift_x.keys()._data.astype(float)/_smps_shift_x).values
-		xx1 = (_smps_shift_x/_smps_shift_x.keys()._data.astype(float)).values
-		xx2 = (_smps_shift_x.keys()._data.astype(float)/_smps_shift_x).values
-		# breakpoint()
 
 		return _smps_shift_factor[range(_dt_size),_smps_shift_ymin.values].copy().reshape(-1,1)
 
@@ -202,12 +198,12 @@ class merger:
 			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
 			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
+		## shift factor to rho
+		_rho_list  = (_shift**2).flatten()
+
 		## process output df
 		## average, align with index
 		_out_df = lambda _lst: DataFrame(_lst).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
-		
-		## not yet
-		_rho_list  = n.full(_aps.shape,n.nan)
 		
 		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list)
 
