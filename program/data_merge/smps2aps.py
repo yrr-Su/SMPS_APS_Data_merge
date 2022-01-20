@@ -93,7 +93,7 @@ class merger:
 			def _filter(_df):
 				_df = _df.total
 				if (_df.isna().sum()) != (_df.__len__()):
-					_std, _mean = _df.std().copy(), _df.mean().copy()
+					_std, _mean = _df.std(), _df.mean()
 					_df.loc[(_df>_mean+1.5*_std)|(_df<_mean-1.5*_std)] = n.nan
 				return _df
 
