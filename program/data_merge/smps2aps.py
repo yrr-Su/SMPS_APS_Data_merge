@@ -156,7 +156,8 @@ class merger:
 		## find the shift factor which contribute miniumum y shift
 		## x_shift_factor = x_aps/x_smps
 		## 
-		_smps_shift_factor = (_smps_shift_x/_smps_shift_x.keys()._data.astype(float)).values
+		xx1 = (_smps_shift_x/_smps_shift_x.keys()._data.astype(float)).values
+		xx2 = (_smps_shift_x.keys()._data.astype(float)/_smps_shift_x).values
 		breakpoint()
 
 		return _smps_shift_factor[range(_dt_size),_smps_shift_ymin.values].copy().reshape(-1,1)
