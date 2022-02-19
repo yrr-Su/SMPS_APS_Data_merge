@@ -47,21 +47,25 @@ class reader:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reser=True'
 
-	def __init__(self,path_raw,path_save,stara_time,end_time,reset=False):
+	def __init__(self,path_raw,path_data,start_time,end_time,reset=False,input_process_data=False,**kwarg):
 		print(f'\nSMPS and APS')
 		print('='*65)
 		print(f"Reading file and process data")
 
 		## class parameter
-		self.index = lambda _freq: date_range(stara_time,end_time,freq=_freq)
+
 		self.path  = Path(path_raw)
-		self.path_out  = Path(path_save)
+		self.path_out  = Path(path_data)
 		self.reset = reset
 		self.meta_read = meta_dt['read']
+
+		self.index = date_range(start_time,end_time,freq=self.meta_read['dt_freq'])
+		start_time, end_time = self.index[[0,-1]]-
+
 		self.out_nam = 'smps_aps_raw.pkl'
-		self.__time  = (stara_time,end_time)
+		self.__time  = (start_time,end_time)
 		
-		print(f" from {stara_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
+		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
 		print('='*65)
 		print(f"{dtm.now().strftime('%m/%d %X')}")
 
@@ -98,7 +102,7 @@ class reader:
 
 	def __raw_process(self,_df,_freq):
 		## customize each instrument
-		out = _df.resample(_freq).mean().reindex(self.index(_freq))
+		out = _df.resample(_freq).mean().reindex(self.index)
 		return out
 
 	## read raw data
@@ -134,6 +138,11 @@ class reader:
 		print()
 
 		return _df_prcs
+
+
+
+
+
 
 	## get process data
 	def save_data(self):

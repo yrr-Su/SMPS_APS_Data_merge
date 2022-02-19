@@ -26,16 +26,12 @@ def __timer(func):
 
 
 @__timer
-def run(path_data,start,end,**kwarg):
+def run(**kwarg):
 
-	default_par = { 'path_rawdata' : path_data/'raw_data',
-					}
-	default_par.update(kwarg)
-
-	raw_process = reader(default_par['path_rawdata'],path_data,start,end,reset=0)
+	raw_process = reader(**kwarg)
 	raw_process.save_data()
 
-	merge_process = merger(path_data,start,end)
+	merge_process = merger(**kwarg)
 	merge_process.merge_data()
 	merge_process.save_data()
 
@@ -49,17 +45,34 @@ def run(path_data,start,end,**kwarg):
 #=============================================================================
 if __name__=='__main__':
 
+	# function 
+	## run(path_raw, path_save, stara_time, end_time, reset=False, process_data_input=False)
+	## path_raw   		  : str or path object
+	##						Any valid string path is acceptable, input the path of raw data
+	## path_data  		  : str or path object
+	##						Any valid string path is acceptable, input the path of output data
+	## start_time 		  : str or datetime-like
+	##						Left bound for data index time
+	## end_time  		  : str or datetime-like
+	##						Right bound for data index time
+	## reset   			  : bool, default is False
+	##						Reload the raw data and re-produce the merge data
+	## input_process_data : bool, default is False
+	##						Use the processed data(made by YE, JUN-FA) which has been QC
+	## 						rather than raw data
+
 	# env paramerter
 	ST_TIME = dtm(2021,11,8,18)
 	ED_TIME = dtm(2021,11,9,16)
 
-	PATH_DATA = Path('..')/'data'/'test'
+	PATH_SAVE = Path('..')/'data'/'test'
+	PATH_RAW  = Path('..')/'data'/'test'/'raw_data'
 
-
-
-
-
-	run(PATH_DATA,ST_TIME,ED_TIME)
+	run(path_raw   = PATH_RAW,
+		path_data  = PATH_SAVE,
+		start_time = ST_TIME,
+		end_time   = ED_TIME,
+	)
 
 
 

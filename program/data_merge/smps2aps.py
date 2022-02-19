@@ -37,7 +37,7 @@ class merger:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reset=True'
 
-	def __init__(self,path_data,start_time,end_time,reset=False,):
+	def __init__(self,path_data,start_time,end_time,reset=False,**kwarg):
 
 		print(f'\nSMPS and APS data merge')
 		print('='*65)
@@ -46,6 +46,8 @@ class merger:
 		## class parameter
 		self.raw_index = date_range(start_time,end_time,freq='6T')
 		self.out_index = lambda _: date_range(start_time,end_time,freq=_)
+		stara_time, end_time = self.raw_index[[0,-1]]
+
 
 		self.path  = Path(path_data)
 		self.reset = reset
