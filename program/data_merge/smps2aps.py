@@ -12,7 +12,7 @@ np = n
 
 # bugs box
 """
-
+raw_index : default 6T, but it is not suit for process data
 
 
 
@@ -37,20 +37,19 @@ class merger:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reset=True'
 
-	def __init__(self,path_data,start_time,end_time,reset=False,**kwarg):
+	def __init__(self,path_data,start_time,end_time,reset=False,input_process_data=False,**kwarg):
 
 		print(f'\nSMPS and APS data merge')
 		print('='*65)
 		print(f"Merge smps and aps, from mobility diameter to aerodynamic diameter")
 
 		## class parameter
-		self.raw_index = date_range(start_time,end_time,freq='6T')
 		self.out_index = lambda _: date_range(start_time,end_time,freq=_)
-		stara_time, end_time = self.raw_index[[0,-1]]
-
+		start_time, end_time = date_range(start_time,end_time,freq='1h')[[0,-1]]
 
 		self.path  = Path(path_data)
 		self.reset = reset
+		self.input_process_data = input_process_data
 
 		self.csv_nam = lambda _ : f"smps2aps_{_}_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.csv"
 		self.pkl_nam = f"smps2aps_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.pkl"
@@ -70,7 +69,10 @@ class merger:
 		## read raw data
 		with open(self.path/'smps_aps_raw.pkl','rb') as f:
 			_dt = pkl.load(f)
-		_aps, _smps = _dt['aps'].reindex(self.raw_index), _dt['smps'].reindex(self.raw_index)
+			_aps, _smps = _dt['aps'], _dt['smps']
+
+		if self.input_process_data: 
+			return _aps, None, _smps, None
 
 		return _aps[_aps.keys()[:-1]], _aps['total'].to_frame(), _smps[_smps.keys()[:-1]], _smps['total'].to_frame()
 
@@ -78,6 +80,11 @@ class merger:
 	## return : aps after QC,
 	## 			smps after QC,
 	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):
+		
+		## processed data, has been QC
+		if self.input_process_data: 
+			return _aps, _smps
+
 		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mpre-process data\033[0m")
 
 		## discard missing data(data equal to 0)
@@ -181,7 +188,7 @@ class merger:
 		_aps_bin  = n.full(_aps.shape,_aps.keys()._data.astype(float))
 
 		_smps_bin = _smps.keys()[_smps.keys()<=_smps_lb]._data
-		_smps = _smps[_smps_bin]
+		_smps 	  = _smps[_smps_bin]
 
 		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
 
@@ -194,14 +201,14 @@ class merger:
 		_bin_aps = _aps_bin[0]
 		for _bin_smps, _dt_aps, _dt_smps in zip(_smps_bin_shift,_aps.values,_smps.values):
 
-			_condi   = _bin_aps>=_bin_smps[-1]
+			_condi = _bin_aps>=_bin_smps[-1]
 			_append_ary = n.full(_max_bin_num-_condi.sum(),n.nan)
 
 			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
 			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
 		## shift factor to rho
-		_rho_list  = (_shift**2).flatten()
+		_rho_list = (_shift**2).flatten()
 
 		## process output df
 		## average, align with index
@@ -220,10 +227,10 @@ class merger:
 		self.fout = None
 
 		## read raw data
-		aps, aps_total, smps, smps_total = self.__read_data()
+		raw_data = self.__read_data()
 
 		## pre-process data
-		aps, smps = self.__pre_process(aps,aps_total,smps,smps_total,aps_fit_highbound,smps_overlap_lowbound)
+		aps, smps = self.__pre_process(*raw_data,aps_fit_highbound,smps_overlap_lowbound)
 
 		## shift infomation, calculate by powerlaw fitting
 		shift = self.__overlap_fitting(aps,smps,aps_fit_highbound,smps_overlap_lowbound)

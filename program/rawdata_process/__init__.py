@@ -54,16 +54,19 @@ class reader:
 
 		## class parameter
 
-		self.path  = Path(path_raw)
+		self.path  	   = Path(path_raw)
 		self.path_out  = Path(path_data)
-		self.reset = reset
+
 		self.meta_read = meta_dt['read']
 
 		self.index = date_range(start_time,end_time,freq=self.meta_read['dt_freq'])
-		start_time, end_time = self.index[[0,-1]]-
+		start_time, end_time = self.index[[0,-1]]
 
 		self.out_nam = 'smps_aps_raw.pkl'
 		self.__time  = (start_time,end_time)
+
+		self.reset = reset
+		self.input_process_data = input_process_data
 		
 		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
 		print('='*65)
@@ -73,7 +76,7 @@ class reader:
 		## customize each instrument
 		## read one filess
 		with open(_file,'r',encoding='utf-8',errors='ignore') as f:
-			_df = read_table(f,skiprows=18,parse_dates={'Time':['Date','Start Time']}).set_index('Time')
+			_df  = read_table(f,skiprows=18,parse_dates={'Time':['Date','Start Time']}).set_index('Time')
 			_key = list(_df.keys()[7:-26])
 
 			_newkey = {}
@@ -87,7 +90,7 @@ class reader:
 		## read one filess
 		with open(_file,'r',encoding='utf-8',errors='ignore') as f:
 
-			_df = read_table(f,skiprows=6,parse_dates={'Time':['Date','Start Time']}).set_index('Time')
+			_df  = read_table(f,skiprows=6,parse_dates={'Time':['Date','Start Time']}).set_index('Time')
 			_key = list(_df.keys()[3:54]) ## 542 ~ 1981
 
 			_newkey = {}
@@ -106,17 +109,15 @@ class reader:
 		return out
 
 	## read raw data
-	def __reader(self,_reader,_nam):
+	def __reader(self,_nam):
+		print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mRAW DATA\033[0m of {_nam} and process it")
 		
 		_path_raw = self.path/_nam
-		_pkl_nam  = f'{_nam}.pkl'
 
-		## read pickle if pickle file exisits and 'reset=False' or process raw data
-		if (self.out_nam in listdir(self.path_out))&(~self.reset):
-			print(f"\n\t{dtm.now().strftime('%m/%d %X')} : \033[96m{self.out_nam}\033[0m already exisits")
-			return None
-		else: 
-			print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mRAW DATA\033[0m of {_nam} and process it")
+		_reader = {'smps' : self.__smps_reader,
+				   'aps'  : self.__aps_reader
+				}
+		_reader = _reader[_nam]
 
 		##=================================================================================================================
 		## metadata parameter
@@ -140,17 +141,53 @@ class reader:
 		return _df_prcs
 
 
+	
+	def __prcs_dt_reader(self,_file):
+		## same templet for smps and aps
+		
+		
+		
+		return _df
 
+	## read data
+	## processed data, has been QC, should has same templet
+	def __prcs_reader(self,):
+		from pandas import read_excel
 
+		print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mPROCESSED DATA\033[0m of {_nam}")
+		
+		## parameter
+		_file = lambda _: listdir(self.path/_)[0]
 
+		## read smps
+		with open(_file('smps'),'rb') as f:
+			_smps = read_excel(_file,parse_dates=['Time']).set_index('Time')
+
+		## read aps
+		## remove first key(<0.523)
+		with open(_file('smps'),'rb') as f:
+			_aps = read_excel(_file,parse_dates=['Time']).set_index('Time')
+			_aps = _aps[_aps.keys()[1::]].copy()
+
+		return _smps, _aps
+		
 
 	## get process data
 	def save_data(self):
 
-		_smps = self.__reader(self.__smps_reader,'smps')
 
-		if (_smps is not None):
-			_aps  = self.__reader(self.__aps_reader,'aps')
+		## read pickle if pickle file exisits and 'reset=False' or process raw data
+		if (self.out_nam in listdir(self.path_out))&(~self.reset):
+			print(f"\n\t{dtm.now().strftime('%m/%d %X')} : \033[96m{self.out_nam}\033[0m already exisits")
+			return None
 
-			with open(self.path_out/'smps_aps_raw.pkl','wb') as f:
-				pkl.dump({'smps':_smps,'aps':_aps},f,protocol=pkl.HIGHEST_PROTOCOL)
+		## read data
+		if self.input_process_data:
+			_smps, _aps = self.__prcs_reader()
+		else:
+			_smps, _aps = self.__reader('smps'), self.__reader('aps')
+
+
+		## output data
+		with open(self.path_out/'smps_aps_raw.pkl','wb') as f:
+			pkl.dump({'smps':_smps,'aps':_aps},f,protocol=pkl.HIGHEST_PROTOCOL)
