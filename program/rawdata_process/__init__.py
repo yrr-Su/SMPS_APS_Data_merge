@@ -140,33 +140,24 @@ class reader:
 
 		return _df_prcs
 
-
-	
-	def __prcs_dt_reader(self,_file):
-		## same templet for smps and aps
-		
-		
-		
-		return _df
-
 	## read data
 	## processed data, has been QC, should has same templet
 	def __prcs_reader(self,):
 		from pandas import read_excel
 
-		print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mPROCESSED DATA\033[0m of {_nam}")
-		
+		print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mPROCESSED DATA\033[0m of aps and smps")
+
 		## parameter
-		_file = lambda _: listdir(self.path/_)[0]
+		_file = lambda _: (self.path/_)/(listdir(self.path/_)[0])
 
 		## read smps
 		with open(_file('smps'),'rb') as f:
-			_smps = read_excel(_file,parse_dates=['Time']).set_index('Time')
+			_smps = read_excel(f,parse_dates=['Time']).set_index('Time')
 
 		## read aps
 		## remove first key(<0.523)
 		with open(_file('smps'),'rb') as f:
-			_aps = read_excel(_file,parse_dates=['Time']).set_index('Time')
+			_aps = read_excel(f,parse_dates=['Time']).set_index('Time')
 			_aps = _aps[_aps.keys()[1::]].copy()
 
 		return _smps, _aps
@@ -174,8 +165,6 @@ class reader:
 
 	## get process data
 	def save_data(self):
-
-
 		## read pickle if pickle file exisits and 'reset=False' or process raw data
 		if (self.out_nam in listdir(self.path_out))&(~self.reset):
 			print(f"\n\t{dtm.now().strftime('%m/%d %X')} : \033[96m{self.out_nam}\033[0m already exisits")
@@ -186,7 +175,6 @@ class reader:
 			_smps, _aps = self.__prcs_reader()
 		else:
 			_smps, _aps = self.__reader('smps'), self.__reader('aps')
-
 
 		## output data
 		with open(self.path_out/'smps_aps_raw.pkl','wb') as f:

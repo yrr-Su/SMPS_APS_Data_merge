@@ -61,7 +61,9 @@ if __name__=='__main__':
 	##						Use the processed data(made by YE, JUN-FA) which has been QC
 	## 						rather than raw data
 
+	# test - raw data
 	# env paramerter
+	'''
 	ST_TIME = dtm(2021,11,8,18)
 	ED_TIME = dtm(2021,11,9,16)
 
@@ -73,6 +75,21 @@ if __name__=='__main__':
 		start_time = ST_TIME,
 		end_time   = ED_TIME,
 	)
+	# '''
 
+	# test2 - processed data
+	# env paramerter
+	# '''
+	ST_TIME = '20200904 23:00:00'
+	ED_TIME = '20210831 23:00:00'
 
+	PATH_SAVE = Path('..')/'data'/'test2'
+	PATH_RAW  = Path('..')/'data'/'test2'/'raw_data'
 
+	run(path_raw   = PATH_RAW,
+		path_data  = PATH_SAVE,
+		start_time = ST_TIME,
+		end_time   = ED_TIME,
+		input_process_data = True
+	)
+	# '''
