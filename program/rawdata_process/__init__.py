@@ -159,6 +159,7 @@ class reader:
 		with open(_file('smps'),'rb') as f:
 			_aps = read_excel(f,parse_dates=['Time']).set_index('Time')
 			_aps = _aps[_aps.keys()[1::]].copy()
+			_
 
 		return _smps, _aps
 		
