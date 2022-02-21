@@ -90,6 +90,7 @@ if __name__=='__main__':
 		path_data  = PATH_SAVE,
 		start_time = ST_TIME,
 		end_time   = ED_TIME,
+		reset 	   = True,
 		input_process_data = True
 	)
 	# '''

@@ -156,10 +156,10 @@ class reader:
 
 		## read aps
 		## remove first key(<0.523)
-		with open(_file('smps'),'rb') as f:
+		with open(_file('aps'),'rb') as f:
 			_aps = read_excel(f,parse_dates=['Time']).set_index('Time')
 			_aps = _aps[_aps.keys()[1::]].copy()
-			_
+			_aps.columns = _aps.keys().astype(float)*1e3 ## to nm
 
 		return _smps, _aps
 		
