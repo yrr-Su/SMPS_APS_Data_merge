@@ -212,8 +212,11 @@ class merger:
 
 		## process output df
 		## average, align with index
-		_out_df = lambda _lst: DataFrame(_lst).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
-		
+		def _out_df(_lst):
+			_df = DataFrame(_lst).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
+			_df.index.name = 'time'
+			return _df
+	
 		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list)
 
 
