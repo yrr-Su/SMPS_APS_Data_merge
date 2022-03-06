@@ -190,11 +190,10 @@ class merger:
 		_smps_bin = _smps.keys()[_smps.keys()<=_smps_lb]._data
 		_smps 	  = _smps[_smps_bin]
 
-		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
-
 		## merge
-		## due to the un-equal length data
-		## loop in each time
+		## (1) un-equal length data
+		## 	   loop in each time
+		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
 		_max_bin_num = (_aps_bin>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
 		
 		_bins_lst, _data_lst = [], []
@@ -207,17 +206,29 @@ class merger:
 			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
 			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
+		## (2) algorithm calculate the shift data
+		##	   y_shift = (1-shift)/shift*slope*x_ori+y_ori (with log scale)
+		##	   with complete smps bins, repeat the first slope 
+		##	   smps : 11.8 ~ 523
+		##	   aps  : 542  ~ 19810
+		_smps_bin_log, _smps_log = n.log10(_smps_bin), n.log10(_smps.values)
+		_smps_slope = n.diff(_smps_log)/n.diff(_smps_bin_log)
+		_smps_slope = n.append(_smps_slope[:,-1].reshape(-1,1),_smps_slope,axis=1)
+		_smps_shift = 10**((1-_shift)/_shift*_smps_slope*_smps_bin_log+_smps_log)
+
+		_data_shift = concat([DataFrame(_smps_shift,columns=_smps_bin,index=_aps.index),_aps],axis=1)
+
 		## shift factor to rho
 		_rho_list = (_shift**2).flatten()
 
 		## process output df
 		## average, align with index
-		def _out_df(_lst):
-			_df = DataFrame(_lst).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
+		def _out_df(*_df_arg,**_df_kwarg):
+			_df = DataFrame(*_df_arg,**_df_kwarg).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
 			_df.index.name = 'time'
 			return _df
 	
-		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list)
+		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list), _out_df(_data_shift)
 
 
 	## aps_fit_highbound : the diameter I choose randomly
@@ -242,11 +253,12 @@ class merger:
 		aps, smps, shift = self.__shift_data_process(aps,smps,shift)
 
 		## merge aps and smps
-		bins, data, density = self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
+		bins, data, density, comp_data = self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
 		
 		self.fout = {'bins'    : bins,
 					 'data'    : data,
 					 'density' : density,
+					 'all'     : comp_data,
 					}
 
 	## save data to given path
