@@ -8,6 +8,7 @@ from datetime import datetime as dtm
 from datetime import timedelta as dtmdt
 from pathlib import PurePath as Path
 import pickle as pkl
+from scipy.interpolate import interp1d
 np = n
 
 # bugs box
@@ -191,32 +192,27 @@ class merger:
 		_smps 	  = _smps[_smps_bin]
 
 		## merge
-		## (1) un-equal length data
-		## 	   loop in each time
+		##  un-equal length data
+		## 	loop in each time
 		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
 		_max_bin_num = (_aps_bin>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
 		
-		_bins_lst, _data_lst = [], []
+		_bins_lst, _data_lst, _smps_inte_lst = [], [], []
 		_bin_aps = _aps_bin[0]
 		for _bin_smps, _dt_aps, _dt_smps in zip(_smps_bin_shift,_aps.values,_smps.values):
 
+			## shift data and shift bin
 			_condi = _bin_aps>=_bin_smps[-1]
 			_append_ary = n.full(_max_bin_num-_condi.sum(),n.nan)
 
 			_bins_lst.append(n.hstack((_bin_smps,_bin_aps[_condi],_append_ary)))
 			_data_lst.append(n.hstack((_dt_smps,_dt_aps[_condi],_append_ary)))
 
-		## (2) algorithm calculate the shift data
-		##	   y_shift = (1-shift)/shift*slope*x_ori+y_ori (with log scale)
-		##	   with complete smps bins, repeat the first slope 
-		##	   smps : 11.8 ~ 523
-		##	   aps  : 542  ~ 19810
-		_smps_bin_log, _smps_log = n.log10(_smps_bin), n.log10(_smps.values)
-		_smps_slope = n.diff(_smps_log)/n.diff(_smps_bin_log)
-		_smps_slope = n.append(_smps_slope[:,-1].reshape(-1,1),_smps_slope,axis=1)
-		_smps_shift = 10**((1-_shift)/_shift*_smps_slope*_smps_bin_log+_smps_log)
+			## linear interpolate and extrapolate for range of smps
+			_inte_fc = interp1d(_bin_smps,_dt_smps,kind='linear',fill_value='extrapolate')
+			_smps_inte_lst.append(_inte_fc(_smps_bin))
 
-		_data_shift = concat([DataFrame(_smps_shift,columns=_smps_bin,index=_aps.index),_aps],axis=1)
+		_data_inte = concat([DataFrame(_smps_inte_lst,columns=_smps_bin,index=_aps.index),_aps],axis=1)
 
 		## shift factor to rho
 		_rho_list = (_shift**2).flatten()
@@ -228,7 +224,7 @@ class merger:
 			_df.index.name = 'time'
 			return _df
 	
-		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list), _out_df(_data_shift)
+		return _out_df(_bins_lst), _out_df(_data_lst), _out_df(_rho_list), _out_df(_data_inte)
 
 
 	## aps_fit_highbound : the diameter I choose randomly
