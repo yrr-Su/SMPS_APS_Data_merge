@@ -117,7 +117,7 @@ class merger:
 			return _data
 		return  _quality_ctrl(_aps,_aps_t), _quality_ctrl(_smps,_smps_t)
 
-	## Overlap fitting
+	## Overlap fitting 
 	## Create a fitting func. by smps data
 	## return : shift factor
 	def __overlap_fitting(self,_aps,_smps,_aps_hb,_smps_lb):
@@ -181,24 +181,28 @@ class merger:
 
 
 	## Create merge data
-	## Return : merge bins, merge data, (density, not yet, fk out)
-	def __merge_data(self,_aps,_smps,_shift,_smps_lb,_ave):
+	##  shift all smps bin and remove the aps bin which smaller than the latest old smps bin
+	## Return : merge bins, merge data, density
+	def __merge_data(self,_aps,_smps,_shift,_ave):
 		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mcreate merge data\033[0m")
 
 		## get merge data
-		_aps_bin  = n.full(_aps.shape,_aps.keys()._data.astype(float))
+		_smps_bin	  = _smps.keys()._data
 
-		_smps_bin = _smps.keys()[_smps.keys()<=_smps_lb]._data
-		_smps 	  = _smps[_smps_bin]
+		_aps_bin  	  = _aps.keys()._data.astype(float)
+		_aps_bin	  = _aps_bin[_aps_bin>_smps_bin[-1]].copy()
+
+		_aps		  = _aps[_aps_bin].copy()
+		_aps_bin_ary  = n.full(_aps.shape,_aps_bin)
 
 		## merge
 		##  un-equal length data
 		## 	loop in each time
 		_smps_bin_shift = n.full(_smps.shape,_smps_bin)*_shift ## different to origin algorithm
-		_max_bin_num = (_aps_bin>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
+		_max_bin_num = (_aps_bin_ary>_smps_bin_shift[:,-1].reshape(-1,1)).sum(axis=1).max()
 		
 		_bins_lst, _data_lst, _smps_inte_lst = [], [], []
-		_bin_aps = _aps_bin[0]
+		_bin_aps = _aps_bin_ary[0]
 		for _bin_smps, _dt_aps, _dt_smps in zip(_smps_bin_shift,_aps.values,_smps.values):
 
 			## shift data and shift bin
@@ -249,7 +253,7 @@ class merger:
 		aps, smps, shift = self.__shift_data_process(aps,smps,shift)
 
 		## merge aps and smps
-		bins, data, density, comp_data = self.__merge_data(aps,smps,shift,smps_overlap_lowbound,ave_time)
+		bins, data, density, comp_data = self.__merge_data(aps,smps,shift,ave_time)
 		
 		self.fout = {'bins'    : bins,
 					 'data'    : data,
