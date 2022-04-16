@@ -6,7 +6,7 @@ from os.path import join as pth, exists, dirname, realpath
 from pandas import date_range, concat, DataFrame
 from datetime import datetime as dtm
 from datetime import timedelta as dtmdt
-from pathlib import PurePath as Path
+from pathlib import Path
 import pickle as pkl
 from scipy.interpolate import interp1d
 np = n
@@ -38,24 +38,18 @@ class merger:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reset=True'
 
-	def __init__(self,path_data,start_time,end_time,reset=False,input_process_data=False,**kwarg):
-
+	def __init__(self,path_data,start_time,end_time,reset=False,
+				 input_QCdata=False,QCdata_freq=None,**kwarg):
 		print(f'\nSMPS and APS data merge')
 		print('='*65)
 		print(f"Merge smps and aps, from mobility diameter to aerodynamic diameter")
 
 		## class parameter
-		self.out_index = lambda _: date_range(start_time,end_time,freq=_)
-		start_time, end_time = date_range(start_time,end_time,freq='1h')[[0,-1]]
-
 		self.path  = Path(path_data)
 		self.reset = reset
-		self.input_process_data = input_process_data
-
-		self.csv_nam = lambda _ : f"smps2aps_{_}_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.csv"
-		self.pkl_nam = f"smps2aps_{start_time.strftime('%Y%m%d')}-{end_time.strftime('%Y%m%d')}.pkl"
-		
-		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
+		self.input_QCdata = input_QCdata
+		self.data_freq  = QCdata_freq or '1h'
+	
 		print('='*65)
 		print(f"{dtm.now().strftime('%m/%d %X')}")
 
@@ -72,7 +66,14 @@ class merger:
 			_dt = pkl.load(f)
 			_aps, _smps = _dt['aps'], _dt['smps']
 
-		if self.input_process_data: 
+			## add env parameter
+			self.out_index = _aps.asfreq(self.data_freq).index.copy()
+			_st, _ed = self.out_index[[0,-1]]
+
+			self.csv_nam = lambda _ : f"smps2aps_{_}_{_st.strftime('%Y%m%d%H00')}-{_st.strftime('%Y%m%d%H00')}.csv"
+			self.pkl_nam = f"smps2aps_{_ed.strftime('%Y%m%d%H00')}-{_ed.strftime('%Y%m%d%H00')}.pkl"
+	
+		if self.input_QCdata: 
 			return _aps, None, _smps, None
 
 		return _aps[_aps.keys()[:-1]], _aps['total'].to_frame(), _smps[_smps.keys()[:-1]], _smps['total'].to_frame()
@@ -83,7 +84,7 @@ class merger:
 	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):
 		
 		## processed data, has been QC
-		if self.input_process_data: 
+		if self.input_QCdata: 
 			return _aps, _smps
 
 		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mpre-process data\033[0m")
@@ -183,7 +184,7 @@ class merger:
 	## Create merge data
 	##  shift all smps bin and remove the aps bin which smaller than the latest old smps bin
 	## Return : merge bins, merge data, density
-	def __merge_data(self,_aps,_smps,_shift,_ave):
+	def __merge_data(self,_aps,_smps,_shift):
 		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mcreate merge data\033[0m")
 
 		## get merge data
@@ -224,7 +225,7 @@ class merger:
 		## process output df
 		## average, align with index
 		def _out_df(*_df_arg,**_df_kwarg):
-			_df = DataFrame(*_df_arg,**_df_kwarg).set_index(_aps.index).resample(_ave).mean().reindex(self.out_index(_ave))
+			_df = DataFrame(*_df_arg,**_df_kwarg).set_index(_aps.index).resample(self.data_freq).mean().reindex(self.out_index)
 			_df.index.name = 'time'
 			return _df
 	
@@ -232,11 +233,11 @@ class merger:
 
 
 	## aps_fit_highbound : the diameter I choose randomly
-	def merge_data(self,ave_time='1h',aps_fit_highbound=1382,smps_overlap_lowbound=523):
+	def merge_data(self,aps_fit_highbound=1382,smps_overlap_lowbound=523):
 		print(f'\nMerge data :')
 		print(f' APS fittint higher diameter : {aps_fit_highbound:4d} nm')
 		print(f' SMPS overlap lower diameter : {smps_overlap_lowbound:4d} nm')
-		print(f' Average time                : {ave_time:>4s}\n')
+		print(f' Average time                : {self.data_freq:>4s}\n')
 
 		self.fout = None
 
@@ -253,7 +254,7 @@ class merger:
 		aps, smps, shift = self.__shift_data_process(aps,smps,shift)
 
 		## merge aps and smps
-		bins, data, density, comp_data = self.__merge_data(aps,smps,shift,ave_time)
+		bins, data, density, comp_data = self.__merge_data(aps,smps,shift)
 		
 		self.fout = {'bins'    : bins,
 					 'data'    : data,

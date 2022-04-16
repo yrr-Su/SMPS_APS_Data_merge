@@ -5,9 +5,10 @@
 # 1. read data and process
 
 from datetime import datetime as dtm
+from datetime import timedelta as dtmdt
 from os import listdir, mkdir
 from os.path import join as pth, exists, dirname, realpath
-from pathlib import PurePath as Path
+from pathlib import Path
 import pickle as pkl
 from numpy import array, nan
 from pandas import date_range, concat, read_table
@@ -47,7 +48,11 @@ class reader:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reser=True'
 
-	def __init__(self,path_raw,path_data,start_time,end_time,reset=False,input_process_data=False,**kwarg):
+	def __init__(self,path_raw,path_data,start_time,end_time,reset=False,
+				 input_QCdata=False,QCdata_freq=None,**kwarg):
+		if (input_QCdata)&(QCdata_freq is None): 
+			raise ValueError('Please input "QCdata_freq" for your index freq')
+
 		print(f'\nSMPS and APS')
 		print('='*65)
 		print(f"Reading file and process data")
@@ -57,20 +62,28 @@ class reader:
 		self.path  	   = Path(path_raw)
 		self.path_out  = Path(path_data)
 
-		self.meta_read = meta_dt['read']
-
-		self.index = date_range(start_time,end_time,freq=self.meta_read['dt_freq'])
-		start_time, end_time = self.index[[0,-1]]
+		self.meta_read = {'ext_nam':'.csv','dt_freq':QCdata_freq} if input_QCdata else meta_dt['read']
+		self.index, (start_time, end_time) = self.__time2whole(start_time,end_time)
 
 		self.out_nam = 'smps_aps_raw.pkl'
 		self.__time  = (start_time,end_time)
 
 		self.reset = reset
-		self.input_process_data = input_process_data
+		self.input_QCdata = input_QCdata
 		
 		print(f" from {start_time.strftime('%Y-%m-%d %X')} to {end_time.strftime('%Y-%m-%d %X')}")
 		print('='*65)
 		print(f"{dtm.now().strftime('%m/%d %X')}")
+
+	def __time2whole(self,_st,_ed):
+		## set time index to whole time
+
+		_st, _ed  = date_range(_st,_ed,freq=self.meta_read['dt_freq'])[[0,-1]]
+		_tm_index = date_range(_st.strftime('%Y%m%d %H00'),
+							 (_ed+dtmdt(hours=1)).strftime('%Y%m%d %H00'),
+							 freq=self.meta_read['dt_freq'])
+		
+		return _tm_index, _tm_index[[0,-1]]
 
 	def __smps_reader(self,_file):
 		## customize each instrument
@@ -143,22 +156,21 @@ class reader:
 	## read data
 	## processed data, has been QC, should has same templet
 	def __prcs_reader(self,):
-		from pandas import read_excel
-
 		print(f"\n\t{dtm.now().strftime('%m/%d %X')} : Reading \033[96mPROCESSED DATA\033[0m of aps and smps")
 
 		## parameter
-		_file = lambda _: (self.path/_)/(listdir(self.path/_)[0])
+		_file = lambda _: list((self.path/_).glob(f'*{self.meta_read["ext_nam"]}'))[0]
 
 		## read smps
 		with open(_file('smps'),'rb') as f:
-			_smps = read_excel(f,parse_dates=['Time']).set_index('Time')
+			_smps = read_csv(f,parse_dates=['Time']).set_index('Time')
+			_smps = _smps.resample(self.meta_read['dt_freq']).mean().reindex(self.index)
 
 		## read aps
 		## remove first key(<0.523)
 		with open(_file('aps'),'rb') as f:
-			_aps = read_excel(f,parse_dates=['Time']).set_index('Time')
-			_aps = _aps[_aps.keys()[1::]].copy()
+			_aps = read_csv(f,parse_dates=['Time']).set_index('Time')
+			_aps = _aps.resample(self.meta_read['dt_freq']).mean().reindex(self.index)
 			_aps.columns = _aps.keys().astype(float)*1e3 ## to nm
 
 		return _smps, _aps
@@ -172,7 +184,7 @@ class reader:
 			return None
 
 		## read data
-		if self.input_process_data:
+		if self.input_QCdata:
 			_smps, _aps = self.__prcs_reader()
 		else:
 			_smps, _aps = self.__reader('smps'), self.__reader('aps')

@@ -91,6 +91,7 @@ if __name__=='__main__':
 		start_time = ST_TIME,
 		end_time   = ED_TIME,
 		reset 	   = True,
-		input_process_data = True
+		input_process_data = True,
+		process_data_freq  = '1h'
 	)
 	# '''
