@@ -57,9 +57,12 @@ if __name__=='__main__':
 	##						Right bound for data index time
 	## reset   			  : bool, default is False
 	##						Reload the raw data and re-produce the merge data
-	## input_process_data : bool, default is False
-	##						Use the processed data(made by YE, JUN-FA) which has been QC
+	## input_QCdata : bool, default is False
+	##						Use the processed data(index : Time, format : csv) which has been QC
 	## 						rather than raw data
+	## QCdata_freq  : str,  default is None
+	##						if input_QCdata==True, this parameter has to input
+	##						it is the frequency of QC data 
 
 	# test - raw data
 	# env paramerter
@@ -80,18 +83,18 @@ if __name__=='__main__':
 	# test2 - processed data
 	# env paramerter
 	# '''
-	ST_TIME = '20200904 23:00:00'
-	ED_TIME = '20210831 23:00:00'
+	ST_TIME = '2022-03-21 11:24:00'
+	ED_TIME = '2022-03-21 18:00:00'
 
-	PATH_SAVE = Path('..')/'data'/'test2'
-	PATH_RAW  = Path('..')/'data'/'test2'/'raw_data'
+	PATH_SAVE = Path('..')/'data'/'test3'
+	PATH_RAW  = Path('..')/'data'/'test3'/'raw_data'
 
 	run(path_raw   = PATH_RAW,
 		path_data  = PATH_SAVE,
 		start_time = ST_TIME,
 		end_time   = ED_TIME,
 		reset 	   = True,
-		input_process_data = True,
-		process_data_freq  = '1h'
+		input_QCdata = True,
+		QCdata_freq  = '6T'
 	)
 	# '''

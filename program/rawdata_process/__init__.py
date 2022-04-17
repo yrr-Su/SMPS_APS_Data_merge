@@ -77,11 +77,10 @@ class reader:
 
 	def __time2whole(self,_st,_ed):
 		## set time index to whole time
-
 		_st, _ed  = date_range(_st,_ed,freq=self.meta_read['dt_freq'])[[0,-1]]
 		_tm_index = date_range(_st.strftime('%Y%m%d %H00'),
-							 (_ed+dtmdt(hours=1)).strftime('%Y%m%d %H00'),
-							 freq=self.meta_read['dt_freq'])
+							  (_ed+dtmdt(hours=1)).strftime('%Y%m%d %H00'),
+							  freq=self.meta_read['dt_freq'])
 		
 		return _tm_index, _tm_index[[0,-1]]
 
@@ -119,6 +118,9 @@ class reader:
 	def __raw_process(self,_df,_freq):
 		## customize each instrument
 		out = _df.resample(_freq).mean().reindex(self.index)
+		assert out[out.columns[5]].dropna()>0, ValueError('Input time mat not match data time index')
+		breakpoint()
+
 		return out
 
 	## read raw data
@@ -163,13 +165,15 @@ class reader:
 
 		## read smps
 		with open(_file('smps'),'rb') as f:
-			_smps = read_csv(f,parse_dates=['Time']).set_index('Time')
+			_smps = read_table(f,delimiter=',',parse_dates=['Time']).set_index('Time')
 			_smps = _smps.resample(self.meta_read['dt_freq']).mean().reindex(self.index)
+			_smps.columns = _smps.keys().astype(float)
+			assert _smps[_smps.columns[5]].dropna().size>0, ValueError('Input time may not match data time index')
 
 		## read aps
 		## remove first key(<0.523)
 		with open(_file('aps'),'rb') as f:
-			_aps = read_csv(f,parse_dates=['Time']).set_index('Time')
+			_aps = read_table(f,delimiter=',',parse_dates=['Time']).set_index('Time')
 			_aps = _aps.resample(self.meta_read['dt_freq']).mean().reindex(self.index)
 			_aps.columns = _aps.keys().astype(float)*1e3 ## to nm
 

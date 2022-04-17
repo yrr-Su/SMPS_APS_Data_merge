@@ -38,7 +38,7 @@ class merger:
 	## because the pickle file will be generated after read raw data first time,
 	## if want to re-read the rawdata, please set 'reset=True'
 
-	def __init__(self,path_data,start_time,end_time,reset=False,
+	def __init__(self,path_data,reset=False,
 				 input_QCdata=False,QCdata_freq=None,**kwarg):
 		print(f'\nSMPS and APS data merge')
 		print('='*65)
@@ -67,7 +67,7 @@ class merger:
 			_aps, _smps = _dt['aps'], _dt['smps']
 
 			## add env parameter
-			self.out_index = _aps.asfreq(self.data_freq).index.copy()
+			self.out_index = _aps.index.copy()
 			_st, _ed = self.out_index[[0,-1]]
 
 			self.csv_nam = lambda _ : f"smps2aps_{_}_{_st.strftime('%Y%m%d%H00')}-{_st.strftime('%Y%m%d%H00')}.csv"
@@ -79,8 +79,8 @@ class merger:
 		return _aps[_aps.keys()[:-1]], _aps['total'].to_frame(), _smps[_smps.keys()[:-1]], _smps['total'].to_frame()
 
 	## Quality control
-	## return : aps after QC,
-	## 			smps after QC,
+	## return : aps after QC(1-hr ave.),
+	## 			smps after QC(1-hr ave.),
 	def __pre_process(self,_aps,_aps_t,_smps,_smps_t,_aps_hb,_smps_lb):
 		
 		## processed data, has been QC
@@ -115,7 +115,7 @@ class merger:
 
 			_data.loc[_total_condi] = n.nan
 
-			return _data
+			return _data.resample(self.data_freq).mean()
 		return  _quality_ctrl(_aps,_aps_t), _quality_ctrl(_smps,_smps_t)
 
 	## Overlap fitting 
@@ -176,7 +176,6 @@ class merger:
 	## Return : aps, smps, shift (without big shift data)
 	def __shift_data_process(self,_aps,_smps,_shift):
 		print(f"\t{dtm.now().strftime('%m/%d %X')} : \033[96mshift-data quality control\033[0m")
-
 		_big_shift = (_shift>10.)|(_shift<-2.)|(n.isnan(_shift))
 		return _aps.loc[~_big_shift], _smps.loc[~_big_shift], _shift[~_big_shift].reshape(-1,1)
 
@@ -225,7 +224,7 @@ class merger:
 		## process output df
 		## average, align with index
 		def _out_df(*_df_arg,**_df_kwarg):
-			_df = DataFrame(*_df_arg,**_df_kwarg).set_index(_aps.index).resample(self.data_freq).mean().reindex(self.out_index)
+			_df = DataFrame(*_df_arg,**_df_kwarg).set_index(_aps.index).reindex(self.out_index)
 			_df.index.name = 'time'
 			return _df
 	
