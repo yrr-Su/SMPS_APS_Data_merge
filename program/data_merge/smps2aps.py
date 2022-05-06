@@ -156,7 +156,7 @@ class merger:
 		## y_shift_min = sum((y_shift-ybase)**2).argmin() (calculate by each column)
 		_smps_shift_x = (_smps/_coeA)**(1/_coeB)
 		_smps_shift_x = _smps_shift_x.where(~n.isinf(_smps_shift_x))
-		_smps_shift_y = (_smps_shift_x*_coeA)**_coeB
+		_smps_shift_y = _coeA*_smps_shift_x**_coeB
 
 		_temp = DataFrame()
 		_smps_base = n.log(_smps)
